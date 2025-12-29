@@ -92,4 +92,96 @@ Esto simula la lectura de humedad, decide si regar o no y envía el evento a Lam
 * DynamoDB con registros generados.
 * Nodo Fog simulado enviando eventos exitosamente.
 
+---
+
+# 🔌 Integración con Arduino ESP32 (Hardware real)
+
+Este proyecto no se limita a una simulación: también fue integrado con un **ESP32 con WiFi**, convirtiéndolo en un sistema **IoT real** de riego inteligente.
+
+El ESP32 funciona como el **dispositivo Edge**, enviando mediciones de humedad al **nodo Fog**, que actúa como intermediario entre el hardware y la nube **Serverless**.
+
+---
+
+### Arquitectura con hardware
+
+```
+ESP32 (Sensor de humedad)
+        │  WiFi
+        ▼
+Fog Node (Flask en WSL)
+        │  HTTP
+        ▼
+AWS API Gateway
+        │
+AWS Lambda
+        │
+DynamoDB
+```
+
+---
+
+### Flujo de funcionamiento
+
+1. El **ESP32** mide (o simula) la humedad del suelo.  
+2. Envía los datos vía **WiFi** al **Fog Node**.  
+3. El **Fog Node** valida y reenvía los datos a la nube.  
+4. **AWS Lambda** ejecuta la lógica de riego (ON / OFF).  
+5. El evento se guarda en **DynamoDB**.  
+6. La respuesta regresa al Fog y puede ser usada para activar actuadores físicos (bomba, relé, etc).
+
+---
+
+### Código del ESP32 (Edge Node)
+
+```cpp
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+const char* ssid = "TU_WIFI";
+const char* password = "TU_PASSWORD";
+const char* fogURL = "http://<IP_FOG_NODE>:5000/sensor";
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+}
+
+void loop() {
+  float humidity = random(20, 90);  // Simulación de sensor
+
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(fogURL);
+    http.addHeader("Content-Type", "application/json");
+
+    String json = "{\"humidity\":" + String(humidity) + "}";
+    http.POST(json);
+    http.end();
+  }
+
+  delay(5000);
+}
+```
+
+---
+
+### Importancia académica
+
+Esta integración demuestra una arquitectura **completa de IoT distribuido**:
+
+| Capa | Implementación |
+|------|----------------|
+| Edge | ESP32 |
+| Fog | Flask (WSL) |
+| Cloud | AWS Lambda |
+| Serverless | API Gateway + Lambda |
+| Data | DynamoDB |
+| IaC | Terraform |
+
+El ESP32 **no se conecta directamente a la nube**, sino que utiliza el **Fog Node**, lo que refleja una arquitectura usada en sistemas industriales y de agricultura inteligente.
+
+
 
