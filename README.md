@@ -96,6 +96,10 @@ Esto simula la lectura de humedad, decide si regar o no y envía el evento a Lam
 
 # 🔌 Integración con Hardware Real (Arduino Nano + Fog Computing)
 
+<p align="center">
+  <img width="50%" height="50%" src="img/foto.png">
+</p>
+
 Además de la simulación por software, el proyecto **SmartPlant-IoT** fue extendido para trabajar con **hardware real**, utilizando un **Arduino Nano**, sensores físicos y actuadores, integrados mediante un **Fog Node**.
 
 Debido a que el Arduino Nano no posee conectividad WiFi, la comunicación con la nube se realiza a través de un **nodo Fog**, que actúa como intermediario inteligente entre el hardware y los servicios **Serverless en AWS**.
