@@ -94,94 +94,84 @@ Esto simula la lectura de humedad, decide si regar o no y envía el evento a Lam
 
 ---
 
-# 🔌 Integración con Arduino ESP32 (Hardware real)
+# 🔌 Integración con Hardware Real (Arduino Nano + Fog Computing)
 
-Este proyecto no se limita a una simulación: también fue integrado con un **ESP32 con WiFi**, convirtiéndolo en un sistema **IoT real** de riego inteligente.
+Además de la simulación por software, el proyecto **SmartPlant-IoT** fue extendido para trabajar con **hardware real**, utilizando un **Arduino Nano**, sensores físicos y actuadores, integrados mediante un **Fog Node**.
 
-El ESP32 funciona como el **dispositivo Edge**, enviando mediciones de humedad al **nodo Fog**, que actúa como intermediario entre el hardware y la nube **Serverless**.
+Debido a que el Arduino Nano no posee conectividad WiFi, la comunicación con la nube se realiza a través de un **nodo Fog**, que actúa como intermediario inteligente entre el hardware y los servicios **Serverless en AWS**.
 
----
+## 🏗️ Arquitectura con Hardware Real
 
-### Arquitectura con hardware
+Arduino Nano  
+(Sensor de humedad + Relé)  
+│  USB / Serial  
+▼  
+Fog Node (Python + Flask + PySerial en WSL)  
+│  HTTP  
+▼  
+AWS API Gateway  
+│  
+AWS Lambda  
+│  
+DynamoDB  
 
-```
-ESP32 (Sensor de humedad)
-        │  WiFi
-        ▼
-Fog Node (Flask en WSL)
-        │  HTTP
-        ▼
-AWS API Gateway
-        │
-AWS Lambda
-        │
-DynamoDB
-```
+## 🔄 Flujo de Funcionamiento
 
----
+1. El **Arduino Nano** mide la humedad del suelo mediante un sensor de humedad.
+2. El valor leído se envía por **comunicación serial (USB)** al Fog Node.
+3. El **Fog Node** interpreta los datos del sensor, aplica validaciones y control local, y reenvía la información a la nube mediante **HTTP**.
+4. **AWS API Gateway** recibe la solicitud.
+5. **AWS Lambda** ejecuta la lógica de riego (**ON / OFF**).
+6. El evento se almacena en **DynamoDB**.
+7. La respuesta puede ser utilizada por el Fog Node para activar la bomba de agua mediante el relé o mostrar el estado del sistema en una interfaz web.
 
-### Flujo de funcionamiento
+## 🌱 Rol del Arduino Nano (Edge Device)
 
-1. El **ESP32** mide (o simula) la humedad del suelo.  
-2. Envía los datos vía **WiFi** al **Fog Node**.  
-3. El **Fog Node** valida y reenvía los datos a la nube.  
-4. **AWS Lambda** ejecuta la lógica de riego (ON / OFF).  
-5. El evento se guarda en **DynamoDB**.  
-6. La respuesta regresa al Fog y puede ser usada para activar actuadores físicos (bomba, relé, etc).
+El **Arduino Nano** funciona como el dispositivo **Edge**, encargado exclusivamente de la lectura del sensor de humedad del suelo, la activación del relé (bomba de agua) y el envío de datos crudos al Fog Node vía **Serial**.  
+El Arduino **no se conecta directamente a la nube**, lo que reduce la complejidad, el consumo energético y las dependencias externas.
 
----
+## 🌫️ Rol del Fog Node
 
-### Código del ESP32 (Edge Node)
+El **Fog Node** es el componente clave de la arquitectura. Se ejecuta en **WSL + Ubuntu**, lee datos del Arduino mediante **PySerial**, ejecuta lógica intermedia y validaciones, expone una **API local** usando **Flask** y se comunica con **AWS Lambda** mediante **HTTP**.  
+Este enfoque refleja arquitecturas reales utilizadas en **agricultura inteligente**, **IoT industrial** y **sistemas distribuidos**.
 
-```cpp
-#include <WiFi.h>
-#include <HTTPClient.h>
+## 🎓 Importancia Académica de esta Integración
 
-const char* ssid = "TU_WIFI";
-const char* password = "TU_PASSWORD";
-const char* fogURL = "http://<IP_FOG_NODE>:5000/sensor";
+Esta implementación demuestra conceptos fundamentales de **Cloud Computing** e **IoT moderno**:
 
-void setup() {
-  Serial.begin(115200);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-  }
-}
+Capa: Edge  
+Implementación: Arduino Nano  
+Herramientas: Sensor de humedad, relé  
 
-void loop() {
-  float humidity = random(20, 90);  // Simulación de sensor
+Capa: Fog  
+Implementación: Nodo intermedio  
+Herramientas: Python, Flask, PySerial  
 
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    http.begin(fogURL);
-    http.addHeader("Content-Type", "application/json");
+Capa: Cloud  
+Implementación: Serverless  
+Herramientas: AWS Lambda  
 
-    String json = "{\"humidity\":" + String(humidity) + "}";
-    http.POST(json);
-    http.end();
-  }
+Capa: Comunicación  
+Implementación: HTTP / Serial  
+Herramientas: API Gateway  
 
-  delay(5000);
-}
-```
+Capa: Persistencia  
+Implementación: NoSQL  
+Herramientas: DynamoDB  
 
----
+Capa: IaC  
+Implementación: Infraestructura  
+Herramientas: Terraform  
 
-### Importancia académica
+## ✅ Beneficios del Enfoque Fog + Serverless
 
-Esta integración demuestra una arquitectura **completa de IoT distribuido**:
+- **Escalable**: Se pueden añadir múltiples Arduino Nano conectados a uno o más Fog Nodes.
+- **Replicable**: Toda la infraestructura cloud se despliega automáticamente con **Terraform**.
+- **Resiliente**: El Fog Node puede operar incluso si la nube no está disponible temporalmente.
+- **Eficiente**: Reduce latencia y consumo de red al no enviar datos crudos directamente a la nube.
+- **Académicamente sólido**: Aplica conceptos reales de arquitecturas distribuidas.
 
-| Capa | Implementación |
-|------|----------------|
-| Edge | ESP32 |
-| Fog | Flask (WSL) |
-| Cloud | AWS Lambda |
-| Serverless | API Gateway + Lambda |
-| Data | DynamoDB |
-| IaC | Terraform |
+## 🏁 Conclusión
 
-El ESP32 **no se conecta directamente a la nube**, sino que utiliza el **Fog Node**, lo que refleja una arquitectura usada en sistemas industriales y de agricultura inteligente.
-
-
+La integración del **Arduino Nano** con un **Fog Node** y servicios **Serverless en AWS**, desplegados mediante **Infrastructure as Code**, convierte a **SmartPlant-IoT** en un proyecto **completo, realista y alineado con arquitecturas modernas de Cloud Computing**, ideal para fines **académicos y demostrativos**.
 
